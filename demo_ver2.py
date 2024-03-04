@@ -307,7 +307,6 @@ def _set_show_text(text):
 # load mode
 print("Loading model...")
 model, predictor, extractor = load_model_and_predict()
-# a = 1
 
 # create window
 cv2.namedWindow("window", cv2.WINDOW_NORMAL)
