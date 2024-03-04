@@ -11,6 +11,9 @@ from torch.nn.functional import cosine_similarity
 from torchvision.ops import box_convert, box_iou
 import matplotlib.pyplot as plt
 
+import tkinter as tk
+from tkinter import simpledialog
+
 
 sys.path.append("./GroundingDINO/")
 sys.path.append("segment-anything")
@@ -33,12 +36,15 @@ TEXT_TRESHOLD = 0.25
 press a: obj_idx will add 1
 '''
 
-process_flag = ["waiting"]
+process_flag = ["Waiting"]
 IMG_NUM_PER_D = 2
 SAVE_DURATION = 20 * IMG_NUM_PER_D * 3 + 5
 SHOW_TIME_BY_FRAME = SAVE_DURATION + 10
 
-show_text = ["press [s-key] to capture images.", 0]
+show_text = ["Press [s] to capture images of objects.", 0]
+show_text_2 = ["Press [q] to quit."]
+show_text_3 = [" "]
+
 intro_text = ["", "", ""]
 save_meta = {
     "save_duration": 0,
@@ -213,7 +219,10 @@ def extract_saved_obj_features(model, predictor, extractor):
     }
     torch.save(obj_features, osp.join(output_path, "obj_features.pt"))
     print("saved obj_features.pt!!")
-    process_flag[0] = "waiting" 
+    _set_show_text("Press [r] to recognize test-images.")
+    _set_show_text_2("Press [r] to recognize again.")
+    _set_show_text_3("")
+    process_flag[0] = "Waiting" 
 
 
 def recognize_pipeline(model, predictor, extractor, obj_features, recognize_img_path, box_threshold=0.35, text_threshold=0.25, idx=0):
@@ -292,16 +301,26 @@ def recognize_pipeline(model, predictor, extractor, obj_features, recognize_img_
             cv2.rectangle(img_rgb_copy, (x1, y1), (x2, y2), (0, 0, 255), 2)
         
         cv2.imwrite(f"./recognized_results/res_{box_threshold}_{text_threshold}.jpg", cv2.cvtColor(img_rgb_copy, cv2.COLOR_RGB2BGR))
-        a[0] = img_rgb_copy.copy()
-
+        img_bgr_copy = cv2.cvtColor(img_rgb_copy, cv2.COLOR_RGB2BGR)
+        a[0] = img_bgr_copy.copy()
+        print("Recognizition finished.")
     else:
-        print("no test image")
+        print("No test image")
     
-    process_flag[0] = "waiting"
+    process_flag[0] = "Waiting"
+    _set_show_text("Press [s] to capure more objects' images.")
+    _set_show_text_2("Press [r] to recognize again.")
+    _set_show_text_3("Press [q] to quit.")
 
 def _set_show_text(text):
     show_text[0] = text
     show_text[1] = SHOW_TIME_BY_FRAME
+
+def _set_show_text_2(text):
+    show_text_2[0] = text
+
+def _set_show_text_3(text):
+    show_text_3[0] = text
 
 
 # load mode
@@ -309,8 +328,9 @@ print("Loading model...")
 model, predictor, extractor = load_model_and_predict()
 
 # create window
-cv2.namedWindow("window", cv2.WINDOW_NORMAL)
 cv2.namedWindow("results", cv2.WINDOW_NORMAL)
+cv2.moveWindow("results", 600, 400)
+cv2.namedWindow("window", cv2.WINDOW_NORMAL)
 
 # use webcam
 print("Open camera...")
@@ -330,6 +350,8 @@ while True:
     cv2.putText(frame_copy, process_flag[0], (500, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
     # show action flag below process flag
     cv2.putText(frame_copy, show_text[0], (250, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    cv2.putText(frame_copy, show_text_2[0], (250, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    cv2.putText(frame_copy, show_text_3[0], (250, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
     if show_text[1] > 0:
         show_text[1] -= 1
@@ -360,8 +382,9 @@ while True:
     else:
         if image_num == IMG_NUM_PER_D * 3:
             print(f"saving images(obj_{obj_idx}) finished.")
-            _set_show_text("press [s-key] again or [a-key] to extract the features.")
-            process_flag[0] = "waiting"
+            _set_show_text("Press [s] again to capture more objects.")
+            _set_show_text_2("Press [a] to extract the features.")
+            process_flag[0] = "Waiting"
             obj_idx += 1
             image_num = 0
             save_meta["save_duration"] = 0
@@ -374,28 +397,35 @@ while True:
     key = cv2.waitKey(5)
 
     # press q to quit
-    if key == ord("q") and process_flag[0] == "waiting":
+    if key == ord("q") and process_flag[0] == "Waiting":
         break
-
 
     # if key is 's' pressed, save image
     if key == ord("s") and save_meta["save_duration"] <= 0:
-        _set_show_text(f"capturing {IMG_NUM_PER_D * 3} images in {SAVE_DURATION-5} frames.")
-        process_flag[0] = "running"
+        _set_show_text(f"Capturing {IMG_NUM_PER_D * 3} images in {SAVE_DURATION-5} frames.")
+        _set_show_text_2(" ")
+        _set_show_text_3(" ")
+        
+        process_flag[0] = "Running"
         save_meta["save_duration"] = SAVE_DURATION
    
     # if key is 'a' pressed, start a new process to extract the feature of saved images
-    if key == ord("a") and process_flag[0] == "waiting":
-        _set_show_text("press [r-key] to recognize test-images.")
-        process_flag[0] = "extracting"
+    if key == ord("a") and process_flag[0] == "Waiting":
+        _set_show_text(" ")
+        _set_show_text_2(" ")
+        _set_show_text_3(" ")
+        process_flag[0] = "Extracting"
         thread = threading.Thread(target=extract_saved_obj_features, args=(model, predictor, extractor))
         thread.start()
 
     # if ket is 'r' pressed, excute clip_test.
-    if key == ord("r") and process_flag[0] == "waiting": 
+    if key == ord("r") and process_flag[0] == "Waiting": 
         _set_show_text("Please wait for recognized result.")
-        process_flag[0] = "recognizing"
+        _set_show_text_2(" ")
+        _set_show_text_3(" ")
+        process_flag[0] = "Recognizing"
         obj_features = torch.load("./extract_saved_obj_feature/obj_features.pt")
+        cv2.imwrite("./test_img/test.jpg", frame)
         thread = threading.Thread(target=recognize_pipeline, args=(model, predictor, extractor, obj_features, f"./test_img/test.jpg", 0.15, 0.15))
         thread.start()
 
