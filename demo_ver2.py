@@ -11,10 +11,6 @@ from torch.nn.functional import cosine_similarity
 from torchvision.ops import box_convert, box_iou
 import matplotlib.pyplot as plt
 
-import tkinter as tk
-from tkinter import simpledialog
-
-
 sys.path.append("./GroundingDINO/")
 sys.path.append("segment-anything")
 from GroundingDINO.groundingdino.util.inference import load_model, load_image, predict, annotate
@@ -25,6 +21,7 @@ TEXT_PROMPT_CAPTURE = "object on the hand"
 TEXT_PROMPT_RECOGNIZE = "object"
 BOX_TRESHOLD = 0.35
 TEXT_TRESHOLD = 0.25
+
 
 # key value
 # q: quit
@@ -220,7 +217,7 @@ def extract_saved_obj_features(model, predictor, extractor):
     torch.save(obj_features, osp.join(output_path, "obj_features.pt"))
     print("saved obj_features.pt!!")
     _set_show_text("Press [r] to recognize test-images.")
-    _set_show_text_2("Press [r] to recognize again.")
+    _set_show_text_2("Press [q] to quit.")
     _set_show_text_3("")
     process_flag[0] = "Waiting" 
 
@@ -304,6 +301,7 @@ def recognize_pipeline(model, predictor, extractor, obj_features, recognize_img_
         img_bgr_copy = cv2.cvtColor(img_rgb_copy, cv2.COLOR_RGB2BGR)
         a[0] = img_bgr_copy.copy()
         print("Recognizition finished.")
+        cv2.setWindowProperty("results", cv2.WND_PROP_TOPMOST, 1)
     else:
         print("No test image")
     
@@ -322,15 +320,15 @@ def _set_show_text_2(text):
 def _set_show_text_3(text):
     show_text_3[0] = text
 
-
 # load mode
 print("Loading model...")
 model, predictor, extractor = load_model_and_predict()
 
 # create window
 cv2.namedWindow("results", cv2.WINDOW_NORMAL)
-cv2.moveWindow("results", 600, 400)
+cv2.moveWindow("results", 200, 50)
 cv2.namedWindow("window", cv2.WINDOW_NORMAL)
+cv2.moveWindow("window", 100, 250)
 
 # use webcam
 print("Open camera...")
@@ -338,6 +336,7 @@ cap = cv2.VideoCapture(0)
 
 image_num = 0
 obj_idx = 0
+obj_name = []
 direction = ["x", "y", "z"]
 i = 0
 
@@ -366,22 +365,22 @@ while True:
     if save_meta["save_duration"] > 0 and i <= 2:
         save_meta["save_duration"] -= 1
 
-        obj_path = osp.join(input_path, f"obj_{obj_idx}")
+        obj_path = osp.join(input_path, f"{obj_name[obj_idx]}")
         if not osp.exists(obj_path):
             os.mkdir(obj_path)        
         
         if save_meta["save_duration"] % (20 * IMG_NUM_PER_D) == 0:
-            print(f"starting caputuring {IMG_NUM_PER_D} pictures of {direction[i]} direction")
+            print(f"Starting caputuring {IMG_NUM_PER_D} pictures of {direction[i]} direction")
         if save_meta["save_duration"] % save_meta["save_frame_gap"] == 0:
             cv2.waitKey(300)
-            print(f"obj_{obj_idx}: {direction[i]}_{image_num % IMG_NUM_PER_D}.jpg saved.")
+            print(f"{obj_name[obj_idx]}: {direction[i]}_{image_num % IMG_NUM_PER_D}.jpg saved.")
             cv2.imwrite(f"{obj_path}/{direction[i]}_{image_num % IMG_NUM_PER_D}.jpg", frame)
             image_num += 1
             if image_num % IMG_NUM_PER_D == 0:
                 i += 1
     else:
         if image_num == IMG_NUM_PER_D * 3:
-            print(f"saving images(obj_{obj_idx}) finished.")
+            print(f"Images of {obj_name[obj_idx]} are saved.")
             _set_show_text("Press [s] again to capture more objects.")
             _set_show_text_2("Press [a] to extract the features.")
             process_flag[0] = "Waiting"
@@ -402,10 +401,11 @@ while True:
 
     # if key is 's' pressed, save image
     if key == ord("s") and save_meta["save_duration"] <= 0:
-        _set_show_text(f"Capturing {IMG_NUM_PER_D * 3} images in {SAVE_DURATION-5} frames.")
+        user_input = input(f"Enter the name of object {obj_idx+1}: ")
+        obj_name.append(user_input)
+        _set_show_text(f"Capturing {IMG_NUM_PER_D * 3} images of {obj_name[obj_idx]} in {SAVE_DURATION-5} frames.")
         _set_show_text_2(" ")
         _set_show_text_3(" ")
-        
         process_flag[0] = "Running"
         save_meta["save_duration"] = SAVE_DURATION
    
@@ -420,7 +420,7 @@ while True:
 
     # if ket is 'r' pressed, excute clip_test.
     if key == ord("r") and process_flag[0] == "Waiting": 
-        _set_show_text("Please wait for recognized result.")
+        _set_show_text("Test-image was captured. Please wait for recognized result.")
         _set_show_text_2(" ")
         _set_show_text_3(" ")
         process_flag[0] = "Recognizing"
