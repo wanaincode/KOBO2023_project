@@ -166,6 +166,8 @@ def load_model_and_predict():
     return model, predictor, extractor
 
 def extract_saved_obj_features(model, predictor, extractor):
+    print("Entering extract_saved_obj_features")
+    input_path = "./saved_obj_img"
     output_path = "./extract_saved_obj_feature"
     if not osp.exists(output_path):
         os.mkdir(output_path)
@@ -231,6 +233,9 @@ def extract_saved_obj_features(model, predictor, extractor):
 
     process_flag[0] = "Waiting"
     process_flag_color[0] = (0, 255, 0)
+    print("Exiting extract_saved_obj_features")
+
+    return obj_features
 
 def recognize_pipeline(model, predictor, extractor, obj_features, recognize_img_path, box_threshold=0.35, text_threshold=0.25, idx=0):
     obj_list = obj_features["obj_list"]
@@ -311,6 +316,7 @@ def recognize_pipeline(model, predictor, extractor, obj_features, recognize_img_
         img_bgr_copy = cv2.cvtColor(img_rgb_copy, cv2.COLOR_RGB2BGR)
         a[0] = img_bgr_copy.copy()
         print("Recognizition finished.")
+
     else:
         print("No test image")
     
@@ -393,6 +399,7 @@ while True:
 
     cv2.setMouseCallback('window', show_xy)  # mouse callback function
 
+
     # object image path
     input_path = "./saved_obj_img/"
     if not osp.exists(input_path):
@@ -461,7 +468,7 @@ while True:
     # key
     key = cv2.waitKey(5) & 0xFF
 
-    # if press Ese, quit the program
+    # if press Esc, quit the program
     if (key == 27 or exit_program) and process_flag[0] == "Waiting":
         break
 
@@ -488,10 +495,13 @@ while True:
 
     # if press Extract, start a new process to extract the feature of saved images
     if abstract_flag and process_flag[0] == "Waiting":
+        print("Starting extract_saved_obj_features thread")
         process_flag[0] = "Extracting"
         process_flag_color[0] = (0, 0, 255)
         thread = threading.Thread(target=extract_saved_obj_features, args=(model, predictor, extractor))
         thread.start()
+        abstract_flag = False
+        print("Thread started")
 
     # if press Recognize, excute clip_test.
     if recognize_flag and process_flag[0] == "Waiting": 
@@ -501,6 +511,7 @@ while True:
         cv2.imwrite("./test_img/test.jpg", frame)
         thread = threading.Thread(target=recognize_pipeline, args=(model, predictor, extractor, obj_features, f"./test_img/test.jpg", 0.15, 0.15))
         thread.start()
+        recognize_flag = False
 
 cv2.destroyAllWindows()
 cap.release()
