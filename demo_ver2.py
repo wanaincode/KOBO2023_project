@@ -34,7 +34,7 @@ press a: obj_idx will add 1
 '''
 
 process_flag = ["Waiting"]
-IMG_NUM_PER_D = 2
+IMG_NUM_PER_D = 10  
 SAVE_DURATION = 20 * IMG_NUM_PER_D * 3 + 5
 SHOW_TIME_BY_FRAME = SAVE_DURATION + 10
 
@@ -301,12 +301,11 @@ def recognize_pipeline(model, predictor, extractor, obj_features, recognize_img_
         img_bgr_copy = cv2.cvtColor(img_rgb_copy, cv2.COLOR_RGB2BGR)
         a[0] = img_bgr_copy.copy()
         print("Recognizition finished.")
-        cv2.setWindowProperty("results", cv2.WND_PROP_TOPMOST, 1)
     else:
         print("No test image")
     
     process_flag[0] = "Waiting"
-    _set_show_text("Press [s] to capure more objects' images.")
+    _set_show_text("Press [s] to capture more objects' images.")
     _set_show_text_2("Press [r] to recognize again.")
     _set_show_text_3("Press [q] to quit.")
 
@@ -332,7 +331,7 @@ cv2.moveWindow("window", 100, 250)
 
 # use webcam
 print("Open camera...")
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 image_num = 0
 obj_idx = 0
