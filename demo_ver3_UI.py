@@ -485,7 +485,6 @@ while True:
             process_flag[0] = "Running"
             process_flag_color[0] = (0, 0, 255)
             save_meta["save_duration"] = SAVE_DURATION
-            
         else:
             input_message[0] = "Please enter the object name:"
 
