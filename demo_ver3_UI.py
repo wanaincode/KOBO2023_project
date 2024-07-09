@@ -190,6 +190,7 @@ def extract_saved_obj_features(model, predictor, extractor):
             img_path = osp.join(obj_path, obj)
 
             # ground dino and sam inference
+            # mask 
             masks, boxes, img_rgb = ground_dino_sam_predict(model, predictor, img_path, TEXT_PROMPT_CAPTURE)
             x1, y1, x2, y2 = boxes[0].cpu().numpy()
             x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
@@ -200,12 +201,34 @@ def extract_saved_obj_features(model, predictor, extractor):
 
             # crop and pad to center
             masked_img = masked_img[y1:y2, x1:x2, :]
+            
             h, w, _ = masked_img.shape
             size = max(h, w)
             img_pad = np.zeros((size, size, 3)).astype(np.uint8)
             img_pad[size//2-h//2:size//2+(h-h//2), size//2-w//2:size//2+(w-w//2)] = masked_img
             img_pad = cv2.resize(img_pad, (224, 224))
+            
+            img_pad_rtop = img_pad.copy()
+            img_pad_ltop = img_pad.copy()
+            img_pad_rdown = img_pad.copy()
+            img_pad_ldown = img_pad.copy()
+
+            # righttop covered mask
+            img_pad_rtop[0:112, 112:224, : ] = (0, 0, 0)
+            img_pad_ltop[0:112, 0:112, : ] = (0, 0, 0)
+            img_pad_rdown[112:224, 112:224, : ] = (0, 0, 0)
+            img_pad_ldown[112:224, 0:112, : ] = (0, 0, 0)
+                
+            if not osp.exists(osp.join(output_path, obj_dir, "covered")):
+                os.mkdir(osp.join(output_path, obj_dir, "covered"))
+            output_covered_path = osp.join(output_path, obj_dir, "covered")
+
             cv2.imwrite(osp.join(output_path, obj_dir, "mask_crop_"+obj), cv2.cvtColor(img_pad, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(osp.join(output_covered_path, "mask_crop_rtop_"+obj), cv2.cvtColor(img_pad_rtop, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(osp.join(output_covered_path, "mask_crop_ltop_"+obj), cv2.cvtColor(img_pad_ltop, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(osp.join(output_covered_path, "mask_crop_rdown_"+obj), cv2.cvtColor(img_pad_rdown, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(osp.join(output_covered_path, "mask_crop_ldown_"+obj), cv2.cvtColor(img_pad_ldown, cv2.COLOR_RGB2BGR))
+
 
             # normalize
             image = img_pad.astype(np.float32) / 255.
@@ -233,7 +256,6 @@ def extract_saved_obj_features(model, predictor, extractor):
 
     process_flag[0] = "Waiting"
     process_flag_color[0] = (0, 255, 0)
-    print("Exiting extract_saved_obj_features")
 
     return obj_features
 
