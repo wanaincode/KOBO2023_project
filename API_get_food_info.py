@@ -14,6 +14,7 @@ def encode_image(image_path):
 IMAGE_PATH = 'test_item.jpg'
 base64_image = encode_image(IMAGE_PATH)
 
+
 response = client.chat.completions.create(
   model= MODEL,
   messages=[
@@ -26,7 +27,7 @@ response = client.chat.completions.create(
                 "url": f"data:image/jpeg;base64,{base64_image}"}
         },{
             "type": "text",
-            "text": "Send back name and calorie of this item using certain form below:\nname:\ncalorie:"
+            "text": "Send back name and calorie of this item using certain form below:\nName:\nCalorie:"
         }
     ]},
   ],
@@ -36,5 +37,9 @@ response = client.chat.completions.create(
   frequency_penalty=0,
   presence_penalty=0
 )
-
-print(response.choices[0].message.content)
+# Name and Calorie of the food item by API
+obj_info_byOPENAI = response.choices[0].message.content.split('\n')
+print(obj_info_byOPENAI)
+obj_name = obj_info_byOPENAI[0]
+obj_calorie = obj_info_byOPENAI[1]
+print(f'{obj_name}, {obj_calorie}')
